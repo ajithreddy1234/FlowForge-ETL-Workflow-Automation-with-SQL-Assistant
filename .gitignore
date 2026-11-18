@@ -1,0 +1,46 @@
+# Environment and credentials
+.env
+.env.*
+!.env.example
+credentials/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Local SQLite database
+app.db
+app.db-*
+app.db*.bak
+
+# Project areas not included in this push
+input/
+saved_pipeline/
+runner_example/
+Images/
+seed.sql
+
+# Runtime logs
+*.log
+
+# Frontend
+UI/node_modules/
+UI/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+runtime/
+*.db
+*.db-*

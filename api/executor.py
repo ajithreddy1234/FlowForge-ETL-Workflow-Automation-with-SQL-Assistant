@@ -81,7 +81,7 @@ def incoming_edges(node_id: str, edges: list) -> list:
 # ── Main executor ─────────────────────────────────────────────────────────────
 
 
-def execute_up_to(
+def _execute_up_to(
     graph,
     target_node_id: str,
     on_progress: Optional[Callable] = None,
@@ -127,28 +127,32 @@ def execute_up_to(
     if cred.data.get("connectionStatus") != "connected":
         raise ValueError("Check DB connection in the Credential node before previewing or running the pipeline.")
 
-    d = cred.data
-    if d.get("connection_id"):
-        db_uri = _saved_connection_uri(
-            int(d["connection_id"]),
-            actor_user_id=actor_user_id,
-            actor_is_admin=actor_is_admin,
-            trusted=trusted_connection,
-        )
+    from api.public_demo import DEMO_MODE
+    if DEMO_MODE:
+        db_uri = "demo://synthetic-orders"
     else:
-        if not (d.get("host") and d.get("database") and d.get("username")):
-            raise ValueError(
-                "Credential node must use a saved connection or include Host, Database, and Username."
+        d = cred.data
+        if d.get("connection_id"):
+            db_uri = _saved_connection_uri(
+                int(d["connection_id"]),
+                actor_user_id=actor_user_id,
+                actor_is_admin=actor_is_admin,
+                trusted=trusted_connection,
             )
-        db_uri = get_connection_uri_from_fields(
-            db_type=d.get("db_type", "mysql"),
-            host=d["host"],
-            port=d.get("port"),
-            database=d["database"],
-            user=d["username"],
-            password=d.get("password", ""),
-        )
-
+        else:
+            if not (d.get("host") and d.get("database") and d.get("username")):
+                raise ValueError(
+                    "Credential node must use a saved connection or include Host, Database, and Username."
+                )
+            db_uri = get_connection_uri_from_fields(
+                db_type=d.get("db_type", "mysql"),
+                host=d["host"],
+                port=d.get("port"),
+                database=d["database"],
+                user=d["username"],
+                password=d.get("password", ""),
+            )
+    
     context: dict[str, pd.DataFrame] = {}
     pending_checkpoints = {}
 
@@ -228,7 +232,7 @@ def _execute_node(
 
     elif node.type == "extract":
         d = node.data
-        dialect = _dialect_from_uri(db_uri)
+        dialect = "sqlite" if db_uri.startswith("demo://") else _dialect_from_uri(db_uri)
         ref = resolve_date(
             d.get("reference_date_mode", "custom"), d.get("reference_date", "")
         )
@@ -256,6 +260,12 @@ def _execute_node(
         params = {"date": query_date, "reference_date": ref}
         if checkpoint is not None:
             params["__flowforge_checkpoint"] = checkpoint
+        if db_uri.startswith("demo://"):
+            from api.public_demo import read_synthetic
+            df = read_synthetic(sql)
+            validate_schema(df, d.get("expected_columns"))
+            context[node.id] = df
+            return
         engine = create_engine(db_uri, pool_pre_ping=True, **get_engine_kwargs(db_uri))
         try:
             with engine.connect() as conn:
@@ -324,6 +334,12 @@ def _execute_node(
         _require_context(context, input_key, "Load")
         df = context[input_key]
         d = node.data
+        if db_uri.startswith("demo://"):
+            from api.public_demo import write_output
+            if not dry_run:
+                write_output(d.get("label", "output"), df)
+            context[node.id] = df
+            return
         sheet_id = extract_sheet_id(d.get("google_sheet_url", ""))
         if not sheet_id.strip():
             raise ValueError("Google Sheet URL or ID is required for the Load node.")
@@ -446,3 +462,16 @@ def _database_error_message(exc: Exception) -> str:
             "from this machine/IP."
         )
     return raw
+
+
+def execute_up_to(graph, target_node_id, on_progress=None, dry_run=False, **kwargs):
+    from api.public_demo import DEMO_MODE, RUN_LOCK, validate_graph
+    if not DEMO_MODE:
+        return _execute_up_to(graph, target_node_id, on_progress, dry_run, **kwargs)
+    validate_graph(graph)
+    if not RUN_LOCK.acquire(blocking=False):
+        raise ValueError("The sandbox is running two pipelines. Try again in a moment.")
+    try:
+        return _execute_up_to(graph, target_node_id, on_progress, dry_run, **kwargs)
+    finally:
+        RUN_LOCK.release()

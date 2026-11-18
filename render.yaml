@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ajith-flowforge-scheduler
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile.public
+    healthCheckPath: /health/ready
+    envVars:
+      - key: FLOWFORGE_DEMO
+        value: "true"

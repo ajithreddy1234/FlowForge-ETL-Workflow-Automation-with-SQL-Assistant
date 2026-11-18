@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+credentials
+runtime
+**/__pycache__
+**/node_modules
+**/dist
+.venv
+input
+saved_pipeline
+Images
+*.db

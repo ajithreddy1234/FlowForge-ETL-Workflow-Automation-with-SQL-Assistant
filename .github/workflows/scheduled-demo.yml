@@ -1,0 +1,26 @@
+name: Daily ETL demonstration
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: public-etl-demo
+  cancel-in-progress: false
+jobs:
+  scheduled-etl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Wake service, execute saved job, and verify output
+        run: python scripts/check_public_demo.py https://ajith-flowforge-scheduler.onrender.com --output demo-evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: regional-revenue-${{ github.run_number }}
+          path: demo-evidence/
+          retention-days: 7

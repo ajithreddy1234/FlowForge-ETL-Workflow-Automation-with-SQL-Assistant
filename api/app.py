@@ -504,3 +504,9 @@ def _log_login(
         )
     )
     db.commit()
+
+
+# Mounted after API routes so deep links can serve the React app.
+from api.public_demo import DEMO_MODE, install_demo_routes
+if DEMO_MODE:
+    install_demo_routes(app)

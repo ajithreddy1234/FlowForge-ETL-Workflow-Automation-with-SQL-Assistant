@@ -1,0 +1,86 @@
+name: etl-pipeline-builder
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: Dockerfile.api
+  env_file:
+    - .env
+  environment:
+    DATABASE_URL: postgresql+psycopg://etl_builder:${POSTGRES_PASSWORD:-etl_builder_local}@postgres:5432/etl_builder
+    RUN_EMBEDDED_SCHEDULER: "false"
+    OLLAMA_BASE_URL: http://ollama:11434
+    GOOGLE_SERVICE_ACCOUNT_FILE: credentials/Sheet_Service.json
+  volumes:
+    - ./credentials:/app/credentials:ro
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: etl_builder
+      POSTGRES_USER: etl_builder
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-etl_builder_local}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U etl_builder -d etl_builder"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  scheduler:
+    <<: *backend
+    command: ["python", "-m", "api.scheduler_main"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "api.worker_main"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  web:
+    build:
+      context: UI
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  ollama_data:
