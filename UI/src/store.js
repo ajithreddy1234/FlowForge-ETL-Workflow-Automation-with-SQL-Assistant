@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react'
 
-export const newId = (type) => `${type}_${crypto.randomUUID().slice(0, 12)}`
+let nodeIdCounter = 1
+export const newId = (type) => `${type}_${nodeIdCounter++}`
 
 const MAX_HISTORY = 50
 
