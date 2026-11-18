@@ -2,8 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react'
 
-let nodeIdCounter = 1
-export const newId = (type) => `${type}_${nodeIdCounter++}`
+export const newId = (type) => `${type}_${crypto.randomUUID().slice(0, 12)}`
 
 const MAX_HISTORY = 50
 
@@ -138,7 +137,7 @@ export const useStore = create(
           nodes: s.nodes.map(n =>
             n.id === id ? { ...n, data: { ...n.data, ...patch } } : n
           ),
-          dirty: true,
+          dirty: s.dirty || Object.keys(patch).some(key => !['_inputCount', 'collapsed'].includes(key)),
         })),
 
       // ── Preview ───────────────────────────────────────────────────────────

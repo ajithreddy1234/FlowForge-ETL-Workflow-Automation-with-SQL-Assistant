@@ -89,7 +89,7 @@ export default function CredentialNode({ id, data }) {
                   <p className="text-xs font-medium text-emerald-400">Connected</p>
                 </div>
                 <p className="truncate font-mono text-[10px] text-white/45">
-                  {data.username}@{data.host}/{data.database}
+                  {import.meta.env.VITE_PUBLIC_DEMO === 'true' ? 'synthetic_orders · read only' : `${data.username}@${data.host}/${data.database}`}
                 </p>
               </>
             ) : connectionFailed ? (

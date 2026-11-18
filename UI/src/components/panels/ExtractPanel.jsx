@@ -145,8 +145,9 @@ export default function ExtractPanel({ node }) {
           placeholder="id, created_at, amount" mono />
       </Field>
 
-      <Field label="Incremental Extraction" hint="Checkpoints are stored per saved schedule after all Load nodes succeed.">
+      <Field label="Incremental Extraction" hint={import.meta.env.VITE_PUBLIC_DEMO === 'true' ? 'The public sandbox runs full extracts. Incremental checkpoints are supported by the private database-to-Sheets deployment.' : 'Checkpoints are stored per saved schedule after all Load nodes succeed.'}>
         <select className="void-focus w-full rounded-lg px-3 py-2 text-sm outline-none"
+          disabled={import.meta.env.VITE_PUBLIC_DEMO === 'true'}
           value={d.incremental_mode || 'none'}
           onChange={e => updateNodeData(node.id, { incremental_mode: e.target.value })}>
           <option value="none">Full extract</option>

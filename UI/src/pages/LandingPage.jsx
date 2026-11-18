@@ -39,7 +39,7 @@ const FEATURES = [
   {
     icon: ActivitySquare,
     title: 'Observable runs',
-    description: 'Every run streams live per-node progress and is recorded with status, duration, rows written, and errors.',
+    description: 'Interactive runs stream per-node progress. Scheduled runs record status, duration, output rows, and errors.',
   },
 ]
 

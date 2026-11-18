@@ -600,7 +600,7 @@ export default function TransformPanel({ node }) {
           onChange={e => setOp({ type: e.target.value })}
         >
           <option value="">Select an operation…</option>
-          {inputCount >= 2 && (
+          {inputCount >= 2 && import.meta.env.VITE_PUBLIC_DEMO !== 'true' && (
             <optgroup label="─ Two-table operations ─">
               {TWO_TABLE_OPS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </optgroup>
