@@ -340,6 +340,12 @@ def _execute_node(
                 write_output(d.get("label", "output"), df)
             context[node.id] = df
             return
+        local = _local_csv_target(d.get("google_sheet_url", ""))
+        if local is not None:
+            if not dry_run:
+                _write_local_csv(local, d, df)
+            context[node.id] = df
+            return
         sheet_id = extract_sheet_id(d.get("google_sheet_url", ""))
         if not sheet_id.strip():
             raise ValueError("Google Sheet URL or ID is required for the Load node.")
@@ -371,6 +377,43 @@ def _execute_node(
 
     else:
         raise ValueError(f"Unsupported node type: {node.type}")
+
+
+def _local_csv_target(url: str):
+    """'csv://<name>' writes CSV files under LOCAL_CSV_OUTPUT_DIR (local development only)."""
+    from src.config import LOCAL_CSV_OUTPUT_DIR
+
+    value = (url or "").strip()
+    if not value.startswith("csv://"):
+        return None
+    if not LOCAL_CSV_OUTPUT_DIR:
+        raise ValueError("csv:// outputs are disabled; set LOCAL_CSV_OUTPUT_DIR or use a Google Sheet")
+    name = value[len("csv://"):].strip()
+    if not re.fullmatch(r"[A-Za-z0-9_\-]{1,80}", name):
+        raise ValueError("csv:// name may contain only letters, digits, '_' and '-'")
+    return name
+
+
+def _write_local_csv(name: str, data: dict, df):
+    from pathlib import Path
+
+    from src.config import LOCAL_CSV_OUTPUT_DIR
+
+    folder = Path(LOCAL_CSV_OUTPUT_DIR) / name
+    folder.mkdir(parents=True, exist_ok=True)
+    tabs = [str(t).strip() for t in (data.get("tab_names") or []) if str(t).strip()] or [str(data.get("tab_name") or "output").strip()]
+    mode = data.get("write_mode", "overwrite")
+    for tab in tabs:
+        if not re.fullmatch(r"[A-Za-z0-9_\- ]{1,80}", tab):
+            raise ValueError(f"Invalid tab name for CSV output: {tab!r}")
+        path = folder / f"{tab}.csv"
+        if mode == "append" and path.exists() and path.stat().st_size:
+            header = path.open().readline().strip().split(",")
+            if header != [str(c) for c in df.columns]:
+                raise ValueError(f"CSV output {path.name} has a different header; append was stopped")
+            df.to_csv(path, mode="a", header=False, index=False)
+        else:
+            df.to_csv(path, index=False)
 
 
 def _require_context(context: dict, input_key: str, node_type: str):

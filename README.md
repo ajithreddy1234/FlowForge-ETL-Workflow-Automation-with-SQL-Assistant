@@ -27,6 +27,35 @@ python -m pip install -r requirements.txt
 PYTHONPATH=. python scripts/serve_public.py
 ```
 
+## Run it locally with Docker (one command)
+
+```bash
+cp .env.example .env      # set LOCAL_ADMIN_PASSWORD (12+ chars) and OPENROUTER_API_KEY
+docker compose up -d --build
+```
+
+Open **http://localhost:8001** and sign in as `admin` with your `LOCAL_ADMIN_PASSWORD`. On first start the `bootstrap` service:
+
+- seeds a demo retail database (200 customers, 1,500 orders, 3,833 order lines) in its own Postgres container,
+- creates a read-only role for it,
+- registers it as the **Demo retail (PostgreSQL)** connection, and scans its catalog.
+
+In the editor, choose **Create guided pipeline**, pick that connection, ask the SQL assistant a question, then load to a Google Sheet. Without Sheets credentials, use `csv://my_report` as the destination; the files land in `./output/`. Add `--profile mysql` (and uncomment `DEMO_MYSQL_ADMIN_URL`) to also test a MySQL source, or `--profile ollama` to use a local model.
+
+## Evaluation
+
+| Suite | What it measures | Command |
+| --- | --- | --- |
+| Guardrails | 47 destructive / exfiltration / side-effect statements, both PostgreSQL and MySQL dialects | `python -m eval.run_eval guardrails` |
+| NL-to-SQL accuracy | 60 business questions through the real assistant pipeline (catalog context, LLM, guardrails, `EXPLAIN`, self-correction). Correct means the accepted SQL returns the same result set as hand-written gold SQL. | `docker compose exec api python -m eval.run_eval accuracy` |
+
+| Result | Value |
+| --- | --- |
+| Guardrails (47 statements × 2 dialects) | **47/47 blocked** in both; 0 false positives on normal analytics queries in tests |
+| Execution accuracy (60 questions) | see `eval/results/accuracy.json` after running with your key |
+
+The accuracy report also records the model, the drafts allowed, accuracy on the first draft, questions recovered by self-correction, p50/p95 latency, and every failure with its SQL.
+
 ## Features
 
 - **Database sources:** Connect to PostgreSQL, MySQL, and Amazon Redshift. Save encrypted connection profiles and scan table, column, primary-key, and relationship metadata.
@@ -34,7 +63,8 @@ PYTHONPATH=. python scripts/serve_public.py
 - **Incremental schedules:** Extract rows after an integer primary-key or unique timestamp checkpoint. Checkpoints are scoped to each schedule and Extract node.
 - **Transformations:** Use the visual pipeline editor to filter, join, group, pivot, and reshape data with Pandas.
 - **Google Sheets output:** Write to one or more tabs in overwrite or append mode. Transient Sheets API errors are retried, and append mode checks the existing header.
-- **SQL assistant:** Generate SQL from catalog metadata with local Ollama/SQLCoder or a limited heuristic fallback. SQLGlot checks the query structure and approved tables; previews run `EXPLAIN` and apply a row limit.
+- **SQL assistant:** Describe the data you need in plain English. The assistant ranks catalog tables by relevance, sends only that schema context to the model (OpenRouter by default, or local Ollama/SQLCoder), and checks every draft with SQLGlot guardrails and `EXPLAIN`. Rejections and database errors go back to the model, which corrects itself (up to 3 drafts). Previews apply a row limit and report truncation exactly.
+- **SQL guardrails:** One read-only statement; no writes, DDL, locks, `SELECT INTO`, `COPY`, or session changes; no `pg_*`/advisory-lock/`dblink`/sequence functions; no system catalogs or database-qualified references; assistant queries limited to approved catalog tables. The demo connects through a read-only database role as a second layer.
 - **Scheduling and visibility:** APScheduler enqueues runs, workers execute them, and the application records status, row counts, duration, retries, and errors.
 - **Access control:** Database-backed login, admin and user roles, encrypted saved passwords, and immutable pipeline versions pinned to schedules.
 
@@ -47,7 +77,7 @@ PYTHONPATH=. python scripts/serve_public.py
 | Source databases | PostgreSQL, MySQL, Amazon Redshift |
 | Application database | PostgreSQL in Docker; SQLite supported for local development |
 | Destination | Google Sheets API via `gspread` |
-| SQL assistant | Ollama/SQLCoder, SQLGlot |
+| SQL assistant | OpenRouter (any OpenAI-compatible LLM) or Ollama/SQLCoder, SQLGlot guardrails, EXPLAIN-based self-correction |
 | Deployment | Docker Compose, Caddy, Alembic |
 
 ## Architecture

@@ -16,13 +16,17 @@ class SqlValidationResult:
 
 
 BLOCKED_FUNCTIONS = {
-    "benchmark",
-    "pg_sleep",
-    "sleep",
-    "sys_eval",
-    "sys_exec",
-    "load_file",
+    "benchmark", "pg_sleep", "sleep", "sys_eval", "sys_exec", "load_file",
+    # side effects, session changes, file/network access
+    "set_config", "current_setting", "nextval", "setval", "lo_import", "lo_export",
+    "lo_unlink", "dblink", "dblink_exec", "dblink_connect", "load_extension",
+    "query_to_xml", "xp_cmdshell", "get_lock", "release_lock", "release_all_locks",
+    "readfile", "writefile", "txid_current", "json_populate_record",
 }
+# Every PostgreSQL pg_* admin/introspection function (advisory locks, backend control,
+# file reads, sleeps) is refused; ordinary analytics never needs them.
+BLOCKED_FUNCTION_PREFIXES = ("pg_", "lo_", "dblink")
+SYSTEM_SCHEMAS = {"pg_catalog", "information_schema", "mysql", "performance_schema", "sys", "pg_toast"}
 
 BLOCKED_EXPRESSIONS = (
     exp.Insert,
@@ -45,6 +49,25 @@ BLOCKED_EXPRESSIONS = (
     exp.Revoke,
     exp.Pragma,
 )
+
+
+def _function_name(node: exp.Expression) -> str:
+    if isinstance(node, exp.Anonymous):
+        return str(node.name or "").lower()
+    return (node.sql_name() or "").lower()
+
+
+def _check_functions_and_catalogs(tree: exp.Expression) -> None:
+    for node in tree.find_all(exp.Func):
+        name = _function_name(node)
+        if name in BLOCKED_FUNCTIONS or name.startswith(BLOCKED_FUNCTION_PREFIXES):
+            raise SqlPolicyError(f"Function {name} is not allowed")
+    for table in tree.find_all(exp.Table):
+        parts = [p.lower().strip('"`') for p in (table.catalog, table.db, table.name) if p]
+        if any(part in SYSTEM_SCHEMAS or part.startswith("pg_") for part in parts):
+            raise SqlPolicyError("System catalogs are not allowed: " + ".".join(parts))
+        if table.catalog:
+            raise SqlPolicyError("Database-qualified (catalog.schema.table) references are not allowed")
 
 
 def validate_read_only_sql(
@@ -70,9 +93,7 @@ def validate_read_only_sql(
     if any(tree.find(kind) is not None for kind in BLOCKED_EXPRESSIONS):
         raise SqlPolicyError("The generated query contains a write or administrative operation")
 
-    for function in tree.find_all(exp.Anonymous):
-        if function.name.lower() in BLOCKED_FUNCTIONS:
-            raise SqlPolicyError(f"Function {function.name} is not allowed")
+    _check_functions_and_catalogs(tree)
 
     normalized_allowed = {
         (schema.lower(), table.lower()) for schema, table in allowed_tables
@@ -128,9 +149,7 @@ def validate_read_only_statement(sql: str, dialect: str) -> str:
         raise SqlPolicyError("Only read-only SELECT queries are allowed")
     if any(tree.find(kind) is not None for kind in BLOCKED_EXPRESSIONS):
         raise SqlPolicyError("The query contains a write, lock, or administrative operation")
-    for function in tree.find_all(exp.Anonymous):
-        if function.name.lower() in BLOCKED_FUNCTIONS:
-            raise SqlPolicyError(f"Function {function.name} is not allowed")
+    _check_functions_and_catalogs(tree)
     return clean
 
 
