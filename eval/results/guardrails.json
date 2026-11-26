@@ -1,0 +1,52 @@
+{
+  "categories": {
+    "write_ddl": {
+      "postgresql": {
+        "queries": 40,
+        "blocked": 40,
+        "leaked": []
+      },
+      "mysql": {
+        "queries": 40,
+        "blocked": 40,
+        "leaked": []
+      },
+      "redshift": {
+        "queries": 40,
+        "blocked": 40,
+        "leaked": []
+      }
+    },
+    "side_effect_exfiltration": {
+      "postgresql": {
+        "queries": 26,
+        "blocked": 26,
+        "leaked": []
+      },
+      "mysql": {
+        "queries": 26,
+        "blocked": 26,
+        "leaked": []
+      },
+      "redshift": {
+        "queries": 26,
+        "blocked": 26,
+        "leaked": []
+      }
+    }
+  },
+  "false_positives": {
+    "postgresql": {
+      "safe_queries": 60,
+      "wrongly_rejected": []
+    },
+    "mysql": {
+      "safe_queries": 60,
+      "wrongly_rejected": []
+    },
+    "redshift": {
+      "safe_queries": 60,
+      "wrongly_rejected": []
+    }
+  }
+}

@@ -15,6 +15,7 @@ x-backend: &backend
   volumes:
     - ./credentials:/app/credentials:ro
     - ./output:/app/output
+    - ./eval/results:/app/eval/results
   restart: unless-stopped
 
 services:

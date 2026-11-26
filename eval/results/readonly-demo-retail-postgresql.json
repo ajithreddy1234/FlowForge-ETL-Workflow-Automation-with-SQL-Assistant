@@ -1,0 +1,7 @@
+{
+  "connection": "Demo retail (PostgreSQL)",
+  "dialect": "postgresql",
+  "queries": 40,
+  "refused_by_database": 40,
+  "executed": []
+}

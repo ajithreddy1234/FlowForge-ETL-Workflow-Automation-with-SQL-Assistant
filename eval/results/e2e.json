@@ -1,0 +1,95 @@
+{
+  "run_at": "2026-11-25T16:27:17.928409+05:30",
+  "postgresql": {
+    "source_rows": 1500,
+    "run_1_full": {
+      "status": "success",
+      "attempt": "1/3",
+      "rows": 1500,
+      "duration_s": 0.082,
+      "worker": "fc167f309f00:1",
+      "error": null,
+      "next_attempt_at": null
+    },
+    "run_2_incremental": {
+      "status": "success",
+      "attempt": "1/3",
+      "rows": 5,
+      "duration_s": 0.031,
+      "worker": "fc167f309f00:1",
+      "error": null,
+      "next_attempt_at": null
+    },
+    "run_3_no_new_rows": {
+      "status": "success",
+      "attempt": "1/3",
+      "rows": 0,
+      "duration_s": 0.032,
+      "worker": "fc167f309f00:1",
+      "error": null,
+      "next_attempt_at": null
+    },
+    "broken_pipeline": {
+      "status": "retry_wait",
+      "attempt": "1/3",
+      "rows": 0,
+      "duration_s": null,
+      "worker": null,
+      "error": "Execution failed on sql 'SELECT * FROM \"missing_table\"': (psycopg.errors.UndefinedTable) relation \"missing_table\" does n",
+      "next_attempt_at": "2026-11-25T10:58:01.460810+00:00"
+    },
+    "query_timeout": {
+      "timeout_s": 3,
+      "stopped_after_s": 3.01,
+      "error": "(psycopg.errors.QueryCanceled) canceling statement due to statement timeout",
+      "still_running_on_server": 0
+    },
+    "csv_output": "output/e2e_postgresql_20261125162653/"
+  },
+  "mysql": {
+    "source_rows": 1500,
+    "run_1_full": {
+      "status": "success",
+      "attempt": "1/3",
+      "rows": 1500,
+      "duration_s": 0.078,
+      "worker": "fc167f309f00:1",
+      "error": null,
+      "next_attempt_at": null
+    },
+    "run_2_incremental": {
+      "status": "success",
+      "attempt": "1/3",
+      "rows": 5,
+      "duration_s": 0.025,
+      "worker": "fc167f309f00:1",
+      "error": null,
+      "next_attempt_at": null
+    },
+    "run_3_no_new_rows": {
+      "status": "success",
+      "attempt": "1/3",
+      "rows": 0,
+      "duration_s": 0.027,
+      "worker": "fc167f309f00:1",
+      "error": null,
+      "next_attempt_at": null
+    },
+    "broken_pipeline": {
+      "status": "retry_wait",
+      "attempt": "1/3",
+      "rows": 0,
+      "duration_s": null,
+      "worker": null,
+      "error": "Execution failed on sql 'SELECT * FROM `missing_table`': (pymysql.err.ProgrammingError) (1146, \"Table 'retail.missing_ta",
+      "next_attempt_at": "2026-11-25T10:58:13.545284+00:00"
+    },
+    "query_timeout": {
+      "timeout_s": 3,
+      "stopped_after_s": 3.03,
+      "error": "(pymysql.err.OperationalError) (3024, 'Query execution was interrupted, maximum statement execution time exceeded')",
+      "still_running_on_server": 0
+    },
+    "csv_output": "output/e2e_mysql_20261125162653/"
+  }
+}

@@ -167,8 +167,10 @@ def get_engine_kwargs(uri: str) -> dict:
         return {
             "connect_args": {
                 "connect_timeout": SOURCE_DB_CONNECT_TIMEOUT_SECONDS,
-                "read_timeout": SOURCE_DB_QUERY_TIMEOUT_SECONDS,
-                "write_timeout": SOURCE_DB_QUERY_TIMEOUT_SECONDS,
+                # Server-side max_execution_time cancels the query first; the socket
+                # timeouts are only a backstop so a dropped client never hides a live query.
+                "read_timeout": SOURCE_DB_QUERY_TIMEOUT_SECONDS + 10,
+                "write_timeout": SOURCE_DB_QUERY_TIMEOUT_SECONDS + 10,
             }
         }
 

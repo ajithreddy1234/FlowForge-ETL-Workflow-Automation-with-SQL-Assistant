@@ -46,3 +46,5 @@ runtime/
 *.db-*
 output/*
 !output/.gitkeep
+.admin-password.txt
+eval/results/.progress-*

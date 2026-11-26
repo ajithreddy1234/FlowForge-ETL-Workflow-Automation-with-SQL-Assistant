@@ -84,7 +84,8 @@ def build(url: str = "sqlite:///./runtime/retail.db", seed: int = 42) -> None:
         start = max(c["signup_date"], date(2025, 1, 1))
         od = start + timedelta(days=rng.randint(0, max(0, (date(2026, 10, 31) - start).days)))
         order_rows.append({"id": oid, "customer_id": c["id"], "order_date": od, "status": rng.choice(STATUSES),
-                           "updated_at": datetime.combine(od, datetime.min.time()) + timedelta(hours=rng.randint(1, 72))})
+                           "updated_at": datetime.combine(od, datetime.min.time())
+                           + timedelta(hours=rng.randint(1, 72), seconds=oid)})  # unique: timestamp checkpoints
         for p in rng.sample(range(1, pid), rng.randint(1, 4)):
             item_rows.append({"id": item_id, "order_id": oid, "product_id": p, "quantity": rng.randint(1, 5),
                               "unit_price": prices[p]})
@@ -95,7 +96,7 @@ def build(url: str = "sqlite:///./runtime/retail.db", seed: int = 42) -> None:
         conn.execute(products.insert(), prod_rows)
         conn.execute(orders.insert(), order_rows)
         conn.execute(order_items.insert(), item_rows)
-    print(f"Seeded {url}: {len(cust_rows)} customers, {len(prod_rows)} products, "
+    print(f"Seeded {engine.url.render_as_string(hide_password=True)}: {len(cust_rows)} customers, {len(prod_rows)} products, "
           f"{len(order_rows)} orders, {len(item_rows)} order items")
 
 

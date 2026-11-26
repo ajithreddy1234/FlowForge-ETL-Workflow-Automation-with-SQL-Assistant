@@ -2,6 +2,7 @@ import json
 import logging
 import math
 import re
+import time
 from decimal import Decimal
 
 import httpx
@@ -258,22 +259,37 @@ def _hosted_sql(requirement: str, dialect: str, schema_context: str, feedback: l
     user = f"Schema:\n{schema_context}\n\nRequirement: {requirement.strip()}"
     for note in feedback:
         user += f"\n\n{note}\nWrite a corrected query."
-    try:
-        response = httpx.post(
-            f"{LLM_BASE_URL}/chat/completions",
-            headers={"Authorization": f"Bearer {LLM_API_KEY}"},
-            json={
-                "model": LLM_MODEL,
-                "temperature": 0,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT.format(dialect=dialect)},
-                    {"role": "user", "content": user},
-                ],
-            },
-            timeout=SQL_ASSISTANT_TIMEOUT_SECONDS,
-        )
-    except httpx.HTTPError as exc:
-        raise SqlAssistantUnavailable(f"Could not reach the LLM provider at {LLM_BASE_URL}: {exc}") from exc
+    body = {
+        "model": LLM_MODEL,
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT.format(dialect=dialect)},
+            {"role": "user", "content": user},
+        ],
+    }
+    for attempt in range(LLM_RATE_LIMIT_RETRIES + 1):
+        try:
+            response = httpx.post(
+                f"{LLM_BASE_URL}/chat/completions",
+                headers={"Authorization": f"Bearer {LLM_API_KEY}"},
+                json=body,
+                timeout=SQL_ASSISTANT_TIMEOUT_SECONDS,
+            )
+        except httpx.HTTPError as exc:
+            raise SqlAssistantUnavailable(f"Could not reach the LLM provider at {LLM_BASE_URL}: {exc}") from exc
+        retryable = response.status_code == 429 or response.status_code >= 500
+        if not retryable:
+            break
+        if response.status_code == 429 and "per-day" in response.text:
+            raise SqlAssistantUnavailable(
+                "The free-model daily request limit is used up; it resets at 00:00 UTC."
+            )
+        if attempt < LLM_RATE_LIMIT_RETRIES:
+            delay = _retry_after_seconds(response, attempt)
+            logger.warning("LLM provider returned %s; retrying in %ss", response.status_code, delay)
+            time.sleep(delay)
+    if response.status_code == 429:
+        raise SqlAssistantUnavailable("The LLM provider is rate limiting requests; try again shortly.")
     if response.status_code in (401, 403):
         raise SqlAssistantUnavailable("The LLM provider rejected OPENROUTER_API_KEY (invalid key or no credit).")
     if response.status_code >= 400:
@@ -283,6 +299,17 @@ def _hosted_sql(requirement: str, dialect: str, schema_context: str, feedback: l
     except (KeyError, IndexError, ValueError) as exc:
         raise SqlAssistantUnavailable("The LLM provider returned an unexpected response") from exc
     return _extract_sql(content)
+
+
+LLM_RATE_LIMIT_RETRIES = 4
+
+
+def _retry_after_seconds(response: httpx.Response, attempt: int) -> float:
+    """Honour Retry-After when the provider sends it; otherwise back off 5s, 10s, 20s, 40s."""
+    try:
+        return min(max(float(response.headers.get("retry-after", "")), 1.0), 60.0)
+    except ValueError:
+        return float(min(5 * 2 ** attempt, 60))
 
 
 def _rank_tables(snapshot: CatalogSnapshot, requirement: str) -> list:
