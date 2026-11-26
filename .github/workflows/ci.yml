@@ -72,7 +72,7 @@ jobs:
           sed -i "s|^APP_SECRET_KEY=.*|APP_SECRET_KEY=$(openssl rand -hex 24)|" .env
           sed -i "s|^# DEMO_MYSQL_ADMIN_URL=|DEMO_MYSQL_ADMIN_URL=|" .env
           sed -i "s|^SQL_ASSISTANT_PROVIDER=.*|SQL_ASSISTANT_PROVIDER=heuristic|" .env
-          chmod 777 output eval/results  # containers run as a non-root user
+          chmod -R a+rwX output eval/results  # containers run as a non-root user and overwrite committed results
       - run: docker compose config --quiet
       - name: Start stack
         run: |
