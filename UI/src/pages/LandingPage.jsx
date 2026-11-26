@@ -139,7 +139,7 @@ export default function LandingPage() {
               onClick={() => goAuthenticated('/pipelines/new')}
               className="void-focus inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-white shadow-glow-accent transition-colors hover:bg-accent-hover"
             >
-              Run the sample pipeline
+              {import.meta.env.VITE_PUBLIC_DEMO === 'true' ? 'Run the sample pipeline' : 'Build a pipeline'}
               <ArrowRight size={15} aria-hidden="true" />
             </button>
             <button
@@ -152,7 +152,7 @@ export default function LandingPage() {
           </div>
 
           {demoError && <p role="alert" className="mt-4 text-sm text-red-300">{demoError}</p>}
-          <p className="mx-auto mt-6 max-w-xl text-xs leading-relaxed text-white/50">Public sandbox · synthetic orders only. Run SQL, edit transforms, save a copy, download CSV output, and schedule a job. Shared demonstration history resets when the free service restarts. Scheduled jobs run while the service is awake.</p>
+          {import.meta.env.VITE_PUBLIC_DEMO === 'true' ? <p className="mx-auto mt-6 max-w-xl text-xs leading-relaxed text-white/50">Public sandbox · synthetic orders only. Run SQL, edit transforms, save a copy, download CSV output, and schedule a job. Shared demonstration history resets when the free service restarts. Scheduled jobs run while the service is awake.</p> : <p className="mx-auto mt-6 max-w-xl text-xs leading-relaxed text-white/50">Sign in to connect PostgreSQL, MySQL or Redshift sources, generate SQL from your catalog with the AI assistant, and load results into Google Sheets on a schedule.</p>}
           <FlowDiagram />
         </section>
 

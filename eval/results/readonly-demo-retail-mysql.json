@@ -1,0 +1,7 @@
+{
+  "connection": "Demo retail (MySQL)",
+  "dialect": "mysql",
+  "queries": 40,
+  "refused_by_database": 40,
+  "executed": []
+}

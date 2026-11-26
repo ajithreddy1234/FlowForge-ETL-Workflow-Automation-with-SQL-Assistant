@@ -47,7 +47,9 @@ export default function LoadPanel({ node }) {
 
       <Field
         label="Google Sheet URL or ID"
-        hint="Paste the full URL from your browser address bar."
+        hint={import.meta.env.VITE_LOCAL_CSV === 'true'
+          ? 'Paste a Google Sheet URL, or use csv://name to write local CSV files (local mode).'
+          : 'Paste the full URL from your browser address bar.'}
         required
       >
         <TextInput

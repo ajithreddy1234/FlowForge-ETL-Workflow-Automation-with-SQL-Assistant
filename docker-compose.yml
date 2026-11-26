@@ -11,8 +11,11 @@ x-backend: &backend
     RUN_EMBEDDED_SCHEDULER: "false"
     OLLAMA_BASE_URL: http://ollama:11434
     GOOGLE_SERVICE_ACCOUNT_FILE: credentials/Sheet_Service.json
+    LOCAL_CSV_OUTPUT_DIR: /app/output
   volumes:
     - ./credentials:/app/credentials:ro
+    - ./output:/app/output
+    - ./eval/results:/app/eval/results
   restart: unless-stopped
 
 services:
@@ -39,10 +42,59 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Local demo source: a seeded retail database the app reads through a read-only role
+  demo-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: retail
+      POSTGRES_USER: demo_admin
+      POSTGRES_PASSWORD: ${DEMO_DB_ADMIN_PASSWORD:-demo-admin-local}
+    volumes:
+      - demo_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo_admin -d retail"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Optional MySQL demo source: docker compose --profile mysql up -d
+  demo-mysql:
+    image: mysql:8.4
+    profiles: ["mysql"]
+    environment:
+      MYSQL_DATABASE: retail
+      MYSQL_ROOT_PASSWORD: ${DEMO_DB_ADMIN_PASSWORD:-demo-admin-local}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DEMO_DB_ADMIN_PASSWORD:-demo-admin-local}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # One-shot: admin user, demo data, read-only role, connection profile + catalog scan (idempotent)
+  bootstrap:
+    <<: *backend
+    command: ["python", "-m", "scripts.bootstrap_local"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://etl_builder:${POSTGRES_PASSWORD:-etl_builder_local}@postgres:5432/etl_builder
+      GOOGLE_SERVICE_ACCOUNT_FILE: credentials/Sheet_Service.json
+      DEMO_SOURCE_ADMIN_URL: postgresql+psycopg://demo_admin:${DEMO_DB_ADMIN_PASSWORD:-demo-admin-local}@demo-db:5432/retail
+      DEMO_SOURCE_HOST: demo-db
+      DEMO_MYSQL_ADMIN_URL: ${DEMO_MYSQL_ADMIN_URL:-}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      demo-db:
+        condition: service_healthy
+    restart: "no"
+
   api:
     <<: *backend
     depends_on:
       migrate:
+        condition: service_completed_successfully
+      bootstrap:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')"]
@@ -64,8 +116,10 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Optional local model instead of OpenRouter: docker compose --profile ollama up -d
   ollama:
     image: ollama/ollama:latest
+    profiles: ["ollama"]
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped
@@ -74,8 +128,10 @@ services:
     build:
       context: UI
       dockerfile: Dockerfile
+      args:
+        VITE_LOCAL_CSV: "true"
     ports:
-      - "8080:8080"
+      - "${WEB_PORT:-8001}:8080"
     depends_on:
       api:
         condition: service_healthy
@@ -83,4 +139,5 @@ services:
 
 volumes:
   postgres_data:
+  demo_data:
   ollama_data:

@@ -44,3 +44,7 @@ Thumbs.db
 runtime/
 *.db
 *.db-*
+output/*
+!output/.gitkeep
+.admin-password.txt
+eval/results/.progress-*

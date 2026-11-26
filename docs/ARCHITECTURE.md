@@ -10,7 +10,8 @@ pipeline. Scheduling is deliberately a separate execution concern rather than
 the centre of the product.
 
 The primary deployment profile is self-hosted and license-free. It uses React,
-FastAPI, PostgreSQL, SQLGlot, Ollama/SQLCoder, APScheduler, and Caddy. It does
+FastAPI, PostgreSQL, SQLGlot, APScheduler, and Caddy. The DataPilot SQL assistant
+calls an OpenRouter model (free-tier models work) or a local Ollama model. It does
 not require a paid database or a paid AI API.
 
 ## Context and trust boundaries
@@ -23,7 +24,7 @@ flowchart TB
 
     subgraph private[Private application network]
       api --> postgres[(PostgreSQL)]
-      api --> ollama[Ollama SQL model]
+      api --> llm[LLM: OpenRouter or Ollama]
       scheduler[Scheduler] --> postgres
       worker[ETL worker pool] --> postgres
     end

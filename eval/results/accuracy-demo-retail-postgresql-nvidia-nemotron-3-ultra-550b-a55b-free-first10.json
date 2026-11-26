@@ -1,0 +1,116 @@
+{
+  "run_at": "2026-11-25T12:35:26+00:00",
+  "provider": "openrouter",
+  "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "max_drafts": 3,
+  "connection": "Demo retail (PostgreSQL)",
+  "questions": 10,
+  "execution_accuracy": 1.0,
+  "correct": 10,
+  "correct_on_first_draft": 10,
+  "recovered_by_self_correction": 0,
+  "p50_latency_s": 3.72,
+  "p95_latency_s": 4.94,
+  "details": [
+    {
+      "id": 1,
+      "question": "How many customers do we have?",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT COUNT(*) AS customer_count\nFROM public.customers",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 3.72
+    },
+    {
+      "id": 2,
+      "question": "How many products are there in each category?",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT\n    p.category,\n    COUNT(*) AS product_count\nFROM public.products p\nGROUP BY p.category\nORDER BY p.category",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 4.94
+    },
+    {
+      "id": 3,
+      "question": "How many orders have status cancelled?",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT COUNT(*) AS cancelled_orders\nFROM public.orders\nWHERE status = 'cancelled'",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 3.17
+    },
+    {
+      "id": 4,
+      "question": "List the distinct cities our customers live in.",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT DISTINCT city\nFROM public.customers\nORDER BY city",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 2.24
+    },
+    {
+      "id": 5,
+      "question": "What is the most expensive product? Give its name and price.",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT\n    p.name,\n    p.price\nFROM public.products p\nORDER BY p.price DESC\nLIMIT 1",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 5.02
+    },
+    {
+      "id": 6,
+      "question": "What is the average product price, rounded to 2 decimals?",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT ROUND(AVG(price), 2) AS average_price\nFROM public.products",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 3.57
+    },
+    {
+      "id": 7,
+      "question": "How many customers are in each city?",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT    city,\n    COUNT(*) AS customer_count\nFROM public.customers\nGROUP BY city\nORDER BY city",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 3.11
+    },
+    {
+      "id": 8,
+      "question": "How many business customers are there?",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT COUNT(*) AS business_customer_count\nFROM public.customers\nWHERE segment = 'business'",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 3.95
+    },
+    {
+      "id": 9,
+      "question": "Count orders by status.",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT\n    o.status,\n    COUNT(*) AS order_count\nFROM public.orders o\nGROUP BY o.status\nORDER BY order_count DESC",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 2.79
+    },
+    {
+      "id": 10,
+      "question": "What is the total quantity of items sold across all orders?",
+      "correct": true,
+      "status": "ok",
+      "sql": "SELECT SUM(oi.quantity) AS total_quantity_sold\nFROM public.order_items oi",
+      "drafts": 1,
+      "error": null,
+      "latency_s": 4.56
+    }
+  ]
+}

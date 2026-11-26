@@ -86,7 +86,7 @@ export default function SqlAssistantPanel({ credential, onUseSql }) {
         className="void-focus flex w-full items-center justify-between text-left"
       >
         <span className="flex items-center gap-2 text-sm font-semibold text-violet-200">
-          <Bot size={15} /> SQL Assistant
+          <Bot size={15} /> DataPilot SQL Assistant
         </span>
         <span className="text-xs text-violet-200/60">{open ? 'Hide' : 'Build from plain English'}</span>
       </button>

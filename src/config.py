@@ -109,6 +109,13 @@ OLLAMA_SQL_MODEL = os.getenv("OLLAMA_SQL_MODEL", "sqlcoder:7b").strip()
 SQL_ASSISTANT_TIMEOUT_SECONDS = _optional_integer(
     "SQL_ASSISTANT_TIMEOUT_SECONDS", 180, 1
 )
+# Hosted LLM provider (any OpenAI-compatible endpoint; OpenRouter by default)
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1").strip().rstrip("/")
+LLM_API_KEY = (os.getenv("OPENROUTER_API_KEY") or os.getenv("LLM_API_KEY") or "").strip()
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-4o-mini").strip()
+SQL_ASSISTANT_MAX_ATTEMPTS = _optional_integer("SQL_ASSISTANT_MAX_ATTEMPTS", 3, 1)
+# Local development sink: a Load node whose sheet is "csv://<name>" writes CSV files here
+LOCAL_CSV_OUTPUT_DIR = os.getenv("LOCAL_CSV_OUTPUT_DIR", "").strip()
 CATALOG_MAX_TABLES = _optional_integer("CATALOG_MAX_TABLES", 250, 1)
 CATALOG_MAX_COLUMNS_PER_TABLE = _optional_integer(
     "CATALOG_MAX_COLUMNS_PER_TABLE", 250, 1
@@ -160,8 +167,10 @@ def get_engine_kwargs(uri: str) -> dict:
         return {
             "connect_args": {
                 "connect_timeout": SOURCE_DB_CONNECT_TIMEOUT_SECONDS,
-                "read_timeout": SOURCE_DB_QUERY_TIMEOUT_SECONDS,
-                "write_timeout": SOURCE_DB_QUERY_TIMEOUT_SECONDS,
+                # Server-side max_execution_time cancels the query first; the socket
+                # timeouts are only a backstop so a dropped client never hides a live query.
+                "read_timeout": SOURCE_DB_QUERY_TIMEOUT_SECONDS + 10,
+                "write_timeout": SOURCE_DB_QUERY_TIMEOUT_SECONDS + 10,
             }
         }
 

@@ -3,6 +3,8 @@ WORKDIR /ui
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+ARG VITE_LOCAL_CSV=false
+ENV VITE_LOCAL_CSV=$VITE_LOCAL_CSV
 RUN npm run build
 
 FROM caddy:2.10-alpine
